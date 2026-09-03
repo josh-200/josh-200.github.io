@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="es">
+<head><script>window.DEMO_APP='colmado';</script><script src='/demo-supabase.js'></script><link rel='stylesheet' href='app.css'>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Control Colmado PC v0.6.0</title>
+
+
+</head>
+<body><div id='portfolioDemoBadge'>DEMO · DATOS FICTICIOS <button onclick='window.__DEMO_LOCAL_DB__?.reset()'>Restablecer</button></div>
+<div id="login" class="login">
+  <div class="login-card">
+    <div class="logo">▦</div>
+    <h1>Control Colmado</h1>
+    <p class="muted">PC · sincronizada con la misma cuenta y la misma base del APK.</p>
+    <div class="field"><label>Correo</label><input id="email" type="email" autocomplete="username"></div>
+    <div class="field"><label>Contraseña</label><input id="password" type="password" autocomplete="current-password"></div>
+    <button class="btn primary" style="width:100%" onclick="loginUser()">Entrar</button>
+    <p id="loginMsg" class="err small"></p>
+  </div>
+</div>
+
+<div id="app" class="app hidden">
+  <aside class="side">
+    <div class="brand"><div class="brand-icon">▦</div><div><strong>Control Colmado</strong><span>PC v0.6.0</span></div></div>
+    <div class="nav" id="nav">
+      <button data-page="inicio" class="active">⌂ Inicio</button>
+      <button data-page="ventas">🛒 Ventas</button>
+      <button data-page="productos">▣ Productos</button>
+      <button data-page="compras">⇩ Compras</button>
+      <button data-page="proveedores">◉ Proveedores</button>
+      <button data-page="fiados">▤ Fiados</button>
+      <button data-page="caja">▰ Caja</button>
+      <button data-page="reportes">▥ Reportes</button>
+      <button data-page="ajustes">⚙ Ajustes</button>
+    </div>
+    <div class="side-bottom"><button class="btn danger" onclick="logout()">Cerrar sesión</button></div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div><h2 id="title">Inicio</h2><div id="businessName" class="muted small">Control Colmado</div></div>
+      <div class="topbar-right"><span id="sync" class="sync-status"></span><button class="btn secondary" onclick="refreshAll()">↻ Sincronizar</button></div>
+    </div>
+
+    <section id="page-inicio" class="active">
+      <div class="hero">
+        <div><div class="small" style="opacity:.85">PANEL PRINCIPAL</div><h1 id="heroBusiness">Control Colmado</h1><p>Ventas, inventario, fiados y caja sincronizados con tu APK.</p></div>
+        <div class="hero-badge"><span class="small">Ventas de hoy</span><b id="heroToday">RD$0.00</b><span class="small">actualizado en tiempo real</span></div>
+      </div>
+      <div class="grid">
+        <div class="metric"><span class="label">Ventas hoy</span><b id="mSalesToday">RD$0.00</b><small id="mSalesCount">0 operaciones</small></div>
+        <div class="metric"><span class="label">Fiado pendiente</span><b id="mDebt">RD$0.00</b><small>saldo actual</small></div>
+        <div class="metric"><span class="label">Stock bajo</span><b id="mLow">0</b><small>productos por reponer</small></div>
+        <div class="metric"><span class="label">Caja</span><b id="mCash">Cerrada</b><small id="mCashSub">abre caja para iniciar</small></div>
+      </div>
+      <div class="notice" style="margin-top:16px"><b>Inventario por conversiones:</b> arroz puede comprarse por saco y venderse por libra; huevos por cartón y unidad; refrescos por fardo y unidad.</div>
+    </section>
+
+    <section id="page-ventas">
+      <div class="two">
+        <div class="card">
+          <div class="section-title"><h3>Productos</h3><span class="pill">Venta rápida</span></div>
+          <div class="field"><label>Buscar / lector de código</label><input id="saleSearch" placeholder="Nombre, atajo o código" oninput="renderSaleProducts()" onkeydown="saleScanEnter(event)"></div><div class="sale-viewbar"><span class="muted small">Productos disponibles</span><div class="segmented"><button id="saleViewList" onclick="setSaleLayout('list')">☷ Lista</button><button id="saleViewGrid" onclick="setSaleLayout('grid')">▦ Cuadrícula</button><button id="saleViewAuto" onclick="setSaleLayout('auto')">Auto</button></div></div>
+          <div id="saleProducts"></div>
+        </div>
+        <div class="card">
+          <div class="section-title"><h3 id="saleCartTitle">Venta actual</h3><button class="btn ghost" onclick="clearSale()">Limpiar</button></div>
+          <div id="cart"></div>
+          <div class="total" id="cartTotal">RD$0.00</div>
+          <button class="btn primary" style="width:100%" onclick="openCheckout()">Cobrar / Guardar</button>
+          <p id="saleMsg" class="small"></p>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="section-title"><h3>Historial de ventas</h3><span class="muted small">Puedes editar o anular ventas completadas</span></div>
+        <div id="salesHistory"></div>
+      </div>
+    </section>
+
+    <section id="page-productos">
+      <div class="two">
+        <div class="card">
+          <h3>Registrar producto</h3>
+          <div class="modal-grid">
+            <div class="field"><label>Nombre</label><input id="pName"></div>
+            <div class="field"><label>Atajo</label><input id="pShortcut" placeholder="ARROZ"></div>
+            <div class="field"><label>Código de barras</label><input id="pBarcode"></div>
+            <div class="field"><label>Unidad base</label><select id="pBaseUnit"><option value="unidad">Unidad</option><option value="libra">Libra</option><option value="onza">Onza</option><option value="kg">Kilogramo</option><option value="gramo">Gramo</option><option value="litro">Litro</option><option value="paquete">Paquete</option><option value="otro">Otro</option></select></div>
+            <div class="field"><label>Precio venta por unidad base</label><input id="pSalePrice" type="number" step="0.01"></div>
+            <div class="field"><label>Stock inicial</label><input id="pStock" type="number" step="0.001" value="0"></div>
+            <div class="field"><label>Stock mínimo</label><input id="pMin" type="number" step="0.001" value="0"></div>
+            <div class="field"><label>Costo base (si no hay presentación)</label><input id="pBaseCost" type="number" step="0.01" value="0"></div>
+          </div>
+          <div class="subtle" style="margin:12px 0">Presentación de compra opcional: Saco 50 lb, Cartón 30 unidades, Fardo 12 unidades...</div>
+          <div class="modal-grid">
+            <div class="field"><label>Presentación de compra</label><input id="pPurchaseName" placeholder="Saco / Cartón / Fardo"></div>
+            <div class="field"><label>Factor a unidad base</label><input id="pFactor" type="number" step="0.001" placeholder="50"></div>
+            <div class="field"><label>Costo por presentación</label><input id="pPurchaseCost" type="number" step="0.01"></div>
+          </div>
+          <button class="btn primary" onclick="createProduct()">Guardar producto</button>
+          <p id="productMsg" class="small"></p>
+        </div>
+        <div class="card">
+          <div class="section-title"><h3>Inventario</h3><div class="field" style="margin:0;width:240px"><input id="productSearch" placeholder="Buscar" oninput="renderProducts()"></div></div>
+          <div id="productTable"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="page-compras">
+      <div class="two">
+        <div class="card">
+          <h3>Agregar mercancía</h3>
+          <div class="field"><label>Proveedor</label><select id="buySupplier"></select></div>
+          <div class="field"><label>Producto</label><select id="buyProduct" onchange="updateBuyUnits()"></select></div>
+          <div class="field"><label>Presentación recibida</label><select id="buyUnit" onchange="updateBuyCost()"></select></div>
+          <div class="modal-grid">
+            <div class="field"><label>Cantidad</label><input id="buyQty" type="number" step="0.001" value="1"></div>
+            <div class="field"><label>Costo por presentación</label><input id="buyCost" type="number" step="0.01"></div>
+          </div>
+          <div id="buyConversion" class="subtle"></div>
+          <button class="btn secondary" style="margin-top:10px" onclick="addPurchaseLine()">Agregar a compra</button>
+        </div>
+        <div class="card">
+          <h3>Compra actual</h3>
+          <div id="purchaseCart"></div><div class="total" id="purchaseTotal">RD$0.00</div>
+          <div class="field"><label>Factura / referencia</label><input id="buyInvoice"></div>
+          <div class="field"><label>Monto pagado ahora</label><input id="buyPaid" type="number" step="0.01" placeholder="Déjalo vacío para pagar todo"></div>
+          <div class="field"><label>Nota</label><input id="buyNotes"></div>
+          <button class="btn primary" style="width:100%" onclick="registerPurchase()">Registrar compra</button>
+          <p id="purchaseMsg" class="small"></p>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px"><div class="section-title"><h3>Compras recientes</h3><span class="muted small">Incluye pendientes a proveedores</span></div><div id="purchaseHistory"></div></div>
+    </section>
+
+    <section id="page-proveedores">
+      <div class="two">
+        <div class="card">
+          <h3>Nuevo proveedor</h3>
+          <div class="field"><label>Nombre</label><input id="sName"></div><div class="field"><label>Teléfono</label><input id="sPhone"></div><div class="field"><label>Dirección</label><input id="sAddress"></div><div class="field"><label>Nota</label><textarea id="sNotes" rows="2"></textarea></div>
+          <button class="btn primary" onclick="createSupplier()">Guardar proveedor</button><p id="supplierMsg" class="small"></p>
+        </div>
+        <div class="card"><div class="section-title"><h3>Proveedores</h3><span id="supplierDebt" class="pill amber">RD$0.00 pendiente</span></div><div id="supplierTable"></div></div>
+      </div>
+    </section>
+
+    <section id="page-fiados">
+      <div class="two">
+        <div class="card">
+          <h3>Nuevo cliente</h3>
+          <div class="field"><label>Nombre</label><input id="cName"></div><div class="field"><label>Teléfono</label><input id="cPhone"></div><div class="field"><label>Dirección</label><input id="cAddress"></div><div class="field"><label>Límite de crédito (0 = sin límite definido)</label><input id="cLimit" type="number" step="0.01" value="0"></div>
+          <button class="btn primary" onclick="createCustomer()">Guardar cliente</button><p id="customerMsg" class="small"></p>
+        </div>
+        <div class="card"><div class="section-title"><h3>Clientes y saldos</h3><span id="creditTotal" class="pill amber">RD$0.00</span></div><div id="creditTable"></div></div>
+      </div>
+    </section>
+
+    <section id="page-caja">
+      <div class="grid" style="margin-bottom:14px">
+        <div class="metric"><span class="label">Estado</span><b id="cashState">Cerrada</b><small id="cashOpenedAt">—</small></div>
+        <div class="metric"><span class="label">Estimado</span><b id="cashEstimated">RD$0.00</b><small>según movimientos</small></div>
+        <div class="metric"><span class="label">Entradas</span><b id="cashIn">RD$0.00</b><small>desde apertura</small></div>
+        <div class="metric"><span class="label">Salidas</span><b id="cashOut">RD$0.00</b><small>desde apertura</small></div>
+      </div>
+      <div class="two">
+        <div class="card"><h3>Acciones de caja</h3><div class="toolbar"><button class="btn primary" id="cashOpenClose" onclick="cashOpenClose()">Abrir caja</button><button class="btn secondary" onclick="cashMovement('entrada')">Registrar ingreso</button><button class="btn amber" onclick="cashMovement('salida')">Registrar gasto</button></div><p id="cashMsg" class="small"></p></div>
+        <div class="card"><h3>Movimientos recientes</h3><div id="cashMovements"></div></div>
+      </div>
+    </section>
+
+    <section id="page-reportes">
+      <div class="section-title"><div><h3>Reportes</h3><div class="muted small">Resumen financiero e inventario</div></div></div>
+      <div class="range" id="reportRange"><button data-range="today" class="active">Hoy</button><button data-range="7">7 días</button><button data-range="30">30 días</button><button data-range="all">Todo</button></div>
+      <div class="grid">
+        <div class="metric"><span class="label">Ventas</span><b id="rSales">RD$0.00</b><small id="rSalesCount">0 ventas</small></div>
+        <div class="metric"><span class="label">Ganancia bruta</span><b id="rProfit">RD$0.00</b><small>ventas - costo vendido</small></div>
+        <div class="metric"><span class="label">Costo vendido</span><b id="rCost">RD$0.00</b><small>costo de mercancía</small></div>
+        <div class="metric"><span class="label">Compras</span><b id="rPurchases">RD$0.00</b><small>mercancía recibida</small></div>
+        <div class="metric"><span class="label">Fiado pendiente</span><b id="rDebt">RD$0.00</b><small>saldo actual</small></div>
+        <div class="metric"><span class="label">A proveedores</span><b id="rSupplierDebt">RD$0.00</b><small>compras pendientes</small></div>
+        <div class="metric"><span class="label">Stock bajo</span><b id="rLow">0</b><small>productos en alerta</small></div>
+        <div class="metric"><span class="label">Productos</span><b id="rProducts">0</b><small>activos</small></div>
+      </div>
+    </section>
+
+    <section id="page-ajustes">
+      <div class="section-title"><div><h3>Ajustes</h3><div class="muted small">Configuración del negocio y de este equipo</div></div><span class="pill">PC v0.6.0</span></div>
+      <div class="settings-shell">
+        <div class="settings-menu" id="settingsMenu">
+          <button class="active" data-setting="negocio" onclick="settingsTab('negocio')">🏪 Negocio</button>
+          <button data-setting="ventas" onclick="settingsTab('ventas')">🛒 Ventas y cobro</button>
+          <button data-setting="inventario" onclick="settingsTab('inventario')">📦 Inventario</button>
+          <button data-setting="compras" onclick="settingsTab('compras')">🚚 Compras y proveedores</button>
+          <button data-setting="fiados" onclick="settingsTab('fiados')">🧾 Clientes y fiados</button>
+          <button data-setting="caja" onclick="settingsTab('caja')">💵 Caja</button>
+          <button data-setting="recibos" onclick="settingsTab('recibos')">🧾 Recibos</button>
+          <button data-setting="scanner" onclick="settingsTab('scanner')">📷 Escáner</button>
+          <button data-setting="apariencia" onclick="settingsTab('apariencia')">🎨 Apariencia</button>
+          <button data-setting="datos" onclick="settingsTab('datos')">☁ Datos y respaldo</button>
+          <button data-setting="cuenta" onclick="settingsTab('cuenta')">🔐 Cuenta</button>
+          <button class="danger-tab" data-setting="peligro" onclick="settingsTab('peligro')">⚠ Zona peligrosa</button>
+          <button data-setting="acerca" onclick="settingsTab('acerca')">ⓘ Acerca de</button>
+        </div>
+        <div class="settings-stack">
+          <div class="settings-pane active" data-pane="negocio"><div class="card"><h3>Información del negocio</h3><div class="field"><label>Nombre</label><input id="setBusiness"></div><button class="btn primary" onclick="saveBusiness()">Guardar nombre</button><p id="businessMsg" class="small"></p></div></div>
+          <div class="settings-pane" data-pane="ventas"><div class="card"><h3>Ventas y cobro</h3><div class="field"><label>Método de pago predeterminado</label><select id="setDefaultPayment"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option></select></div><div class="settings-row"><div><b>Modo venta rápida</b><div class="setting-note">Reduce pasos para productos por unidad.</div></div><input id="setQuickSale" type="checkbox"></div><div class="settings-row"><div><b>Exigir caja abierta para efectivo</b><div class="setting-note">Bloquea cobros en efectivo si la caja está cerrada.</div></div><input id="setRequireCash" type="checkbox"></div><div class="settings-row"><div><b>Confirmar antes de anular</b></div><input id="setConfirmVoid" type="checkbox"></div><button class="btn primary" onclick="saveSettings()">Guardar ventas</button></div></div>
+          <div class="settings-pane" data-pane="inventario"><div class="card"><h3>Inventario</h3><div class="settings-row"><div><b>Permitir stock negativo</b></div><input id="setNegative" type="checkbox"></div><div class="settings-row"><div><b>Alertas de stock bajo</b></div><input id="setLowAlerts" type="checkbox"></div><div class="settings-row"><div><b>Exigir motivo al ajustar stock</b></div><input id="setStockReason" type="checkbox"></div><div class="settings-row"><div><b>Mostrar productos agotados</b></div><input id="setShowOut" type="checkbox"></div><div class="field"><label>Actualizar costo al comprar</label><select id="setCostMethod"><option value="last_cost">Último costo</option><option value="weighted_average">Costo promedio</option><option value="manual">No actualizar automáticamente</option></select></div><button class="btn primary" onclick="saveSettings()">Guardar inventario</button></div></div>
+          <div class="settings-pane" data-pane="compras"><div class="card"><h3>Compras y proveedores</h3><div class="settings-row"><div><b>Exigir proveedor</b><div class="setting-note">Impide registrar compras sin proveedor.</div></div><input id="setRequireSupplier" type="checkbox"></div><div class="settings-row"><div><b>Permitir compras parciales</b><div class="setting-note">Permite dejar saldo pendiente al proveedor.</div></div><input id="setPartialPurchases" type="checkbox"></div><button class="btn primary" onclick="saveSettings()">Guardar compras</button></div></div>
+          <div class="settings-pane" data-pane="fiados"><div class="card"><h3>Clientes y fiados</h3><div class="field"><label>Límite de crédito predeterminado</label><input id="setDefaultCredit" type="number" min="0" step="0.01"><div class="setting-note">0 = sin límite definido. Los límites individuales siempre se respetan.</div></div><button class="btn primary" onclick="saveSettings()">Guardar fiados</button></div></div>
+          <div class="settings-pane" data-pane="caja"><div class="card"><h3>Caja</h3><p class="muted">La apertura, ingresos, gastos y cierre se realizan en la sección Caja.</p><div class="settings-row"><div><b>Exigir caja abierta para efectivo</b></div><input id="setRequireCash2" type="checkbox" onchange="document.getElementById('setRequireCash').checked=this.checked"></div><button class="btn primary" onclick="saveSettings()">Guardar caja</button></div></div>
+          <div class="settings-pane" data-pane="recibos"><div class="card"><h3>Contenido del recibo</h3><div class="settings-row"><div><b>Mostrar cliente</b></div><input id="setReceiptCustomer" type="checkbox"></div><div class="settings-row"><div><b>Mostrar forma de pago</b></div><input id="setReceiptPayment" type="checkbox"></div><div class="settings-row"><div><b>Mostrar unidades y conversiones</b></div><input id="setReceiptUnits" type="checkbox"></div><div class="field"><label>Mensaje al final</label><input id="setReceiptFooter" placeholder="Gracias por su compra"></div><button class="btn primary" onclick="saveSettings()">Guardar recibo</button></div></div>
+          <div class="settings-pane" data-pane="scanner"><div class="card"><h3>Escáner</h3><div class="settings-row"><div><b>Sonido al leer código</b></div><input id="setScannerSound" type="checkbox"></div><div class="settings-row"><div><b>Vibración</b><div class="setting-note">Solo si el dispositivo/navegador lo soporta.</div></div><input id="setScannerVibration" type="checkbox"></div><div class="subtle">Un lector USB/Bluetooth puede usarse directamente: enfoca el buscador de Venta y escanea.</div><button class="btn primary" onclick="saveSettings()">Guardar escáner</button></div></div>
+          <div class="settings-pane" data-pane="apariencia"><div class="card"><h3>Apariencia de esta PC</h3><div class="field"><label>Tema</label><select id="pcTheme" onchange="saveLocalUi()"><option value="system">Según sistema</option><option value="light">Claro</option><option value="dark">Oscuro</option></select></div><div class="field"><label>Diseño de productos en Venta</label><select id="pcSaleLayout" onchange="saveLocalUi();renderSaleProducts()"><option value="auto">Automático</option><option value="list">Lista</option><option value="grid">Cuadrícula</option></select></div><div class="settings-row"><div><b>Modo compacto</b><div class="setting-note">Reduce espacios y filas en pantallas grandes.</div></div><input id="pcCompact" type="checkbox" onchange="saveLocalUi()"></div><p class="muted small">Estos ajustes son solo de esta PC; no cambian el tema del celular.</p></div></div>
+          <div class="settings-pane" data-pane="datos"><div class="card"><h3>Sincronización y respaldo</h3><p class="muted">PC, móvil y tablet usan la misma base.</p><div class="backup-summary"><div><b id="bkProducts">0</b>productos</div><div><b id="bkSales">0</b>ventas</div><div><b id="bkCustomers">0</b>clientes</div><div><b id="bkSuppliers">0</b>proveedores</div></div><div class="actions"><button class="btn primary" onclick="refreshAll()">↻ Sincronizar</button><button class="btn secondary" onclick="exportBackup()">⬇ Respaldo JSON</button><button class="btn secondary" onclick="exportInventoryCsv()">CSV inventario</button><button class="btn secondary" onclick="exportSalesCsv()">CSV ventas</button></div></div></div>
+          <div class="settings-pane" data-pane="cuenta"><div class="card"><h3>Cuenta</h3><p id="accountEmail" class="muted"></p><button class="btn danger" onclick="logout()">Cerrar sesión</button></div></div>
+          <div class="settings-pane" data-pane="peligro"><div class="card danger-card"><h3>⚠ Zona peligrosa</h3><p>Estas acciones afectan inmediatamente la APK y la PC porque comparten la misma base.</p><p class="muted small">Recomendación: descarga un respaldo antes de continuar.</p><button class="btn amber" onclick="openResetDialog('transactions')">Borrar movimientos y empezar de cero</button><button class="btn danger" onclick="openResetDialog('all')">Restablecer negocio completamente</button></div></div>
+          <div class="settings-pane" data-pane="acerca"><div class="card"><h3>Control Colmado</h3><p><b>Versión PC 0.6.0</b></p><p class="muted">Sistema privado de ventas, inventario, compras, proveedores, fiados y caja, sincronizado con Android.</p></div></div>
+          <p id="settingsMsg" class="small"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="modalRoot"></div>
+<script src='app.js'></script>
+</body>
+</html>
