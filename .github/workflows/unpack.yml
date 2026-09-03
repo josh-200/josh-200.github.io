@@ -16,53 +16,58 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Copy public interfaces and isolate cloud access
+      - name: Build safe demos
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p demos/paca-marizol demos/control-colmado
+
+          # Paca Marizol: copy the current public interface, then remove all real cloud access.
           curl -fsSL --retry 3 --retry-delay 2 'https://paca-marizol.pages.dev/pc' -o /tmp/paca.html
-          curl -fsSL --retry 3 --retry-delay 2 'https://control-colmado.faviangomex2019.chatgpt.site/' -o /tmp/colmado.html
           python3 - <<'PY'
           import re
           from pathlib import Path
-
-          def patch(src, dst, app, expected):
-              text=Path(src).read_text(encoding='utf-8',errors='replace')
-              if expected.lower() not in text.lower():
-                  raise SystemExit(f'La pagina descargada no parece ser {expected}')
-              # Remove the real Supabase browser SDK so the local demo adapter owns window.supabase.
-              text=re.sub(r'<script\b[^>]*\bsrc=["\'][^"\']*supabase[^"\']*["\'][^>]*>\s*</script>', '', text, flags=re.I)
-              # Remove any real project endpoint/key left in inline configuration.
-              text=re.sub(r"(const|let|var)\s+SUPABASE_URL\s*=\s*(['\"]).*?\2\s*;", r"\1 SUPABASE_URL='https://demo.invalid';", text, flags=re.I)
-              text=re.sub(r"(const|let|var)\s+SUPABASE_KEY\s*=\s*(['\"]).*?\2\s*;", r"\1 SUPABASE_KEY='demo-local-only';", text, flags=re.I)
-              text=re.sub(r'https://[a-z0-9-]+\.supabase\.co', 'https://demo.invalid', text, flags=re.I)
-              inject=(f"<script>window.DEMO_APP='{app}';</script>"
-                      "<script src='/demo-supabase.js'></script>"
-                      "<style>#portfolioDemoBadge{position:fixed;right:12px;bottom:12px;z-index:999999;background:#111827;color:#fff;border:1px solid #ffffff2b;border-radius:999px;padding:9px 12px;font:700 11px system-ui;box-shadow:0 8px 30px #0005}#portfolioDemoBadge button{margin-left:8px;border:0;border-radius:999px;padding:5px 8px;cursor:pointer}</style>")
-              text=re.sub(r'<head(\s[^>]*)?>', lambda m:m.group(0)+inject, text, count=1, flags=re.I)
-              badge="<div id='portfolioDemoBadge'>DEMO · DATOS FICTICIOS <button onclick='window.__DEMO_LOCAL_DB__?.reset()'>Restablecer</button></div>"
-              text=re.sub(r'<body(\s[^>]*)?>', lambda m:m.group(0)+badge, text, count=1, flags=re.I)
-              text=text.replace('Guardado en nube ✓','Demo local ✓').replace('☁ Nube ✓','Demo local ✓')
-              Path(dst).write_text(text,encoding='utf-8')
-
-          patch('/tmp/paca.html','demos/paca-marizol/index.html','paca','Paca')
-          patch('/tmp/colmado.html','demos/control-colmado/index.html','colmado','Colmado')
+          text=Path('/tmp/paca.html').read_text(encoding='utf-8',errors='replace')
+          if 'paca' not in text.lower():
+              raise SystemExit('La pagina descargada no parece ser Paca Marizol')
+          text=re.sub(r'<script\b[^>]*\bsrc=["\'][^"\']*supabase[^"\']*["\'][^>]*>\s*</script>', '', text, flags=re.I)
+          text=re.sub(r"(const|let|var)\s+SUPABASE_URL\s*=\s*(['\"]).*?\2\s*;", r"\1 SUPABASE_URL='https://demo.invalid';", text, flags=re.I)
+          text=re.sub(r"(const|let|var)\s+SUPABASE_KEY\s*=\s*(['\"]).*?\2\s*;", r"\1 SUPABASE_KEY='demo-local-only';", text, flags=re.I)
+          text=re.sub(r'https://[a-z0-9-]+\.supabase\.co', 'https://demo.invalid', text, flags=re.I)
+          inject=("<script>window.DEMO_APP='paca';</script>"
+                  "<script src='/demo-supabase.js'></script>"
+                  "<style>#portfolioDemoBadge{position:fixed;right:12px;bottom:12px;z-index:999999;background:#111827;color:#fff;border:1px solid #ffffff2b;border-radius:999px;padding:9px 12px;font:700 11px system-ui;box-shadow:0 8px 30px #0005}#portfolioDemoBadge button{margin-left:8px;border:0;border-radius:999px;padding:5px 8px;cursor:pointer}</style>")
+          text=re.sub(r'<head(\s[^>]*)?>', lambda m:m.group(0)+inject, text, count=1, flags=re.I)
+          badge="<div id='portfolioDemoBadge'>DEMO · DATOS FICTICIOS <button onclick='window.__DEMO_LOCAL_DB__?.reset()'>Restablecer</button></div>"
+          text=re.sub(r'<body(\s[^>]*)?>', lambda m:m.group(0)+badge, text, count=1, flags=re.I)
+          text=text.replace('Guardado en nube ✓','Demo local ✓').replace('☁ Nube ✓','Demo local ✓')
+          Path('demos/paca-marizol/index.html').write_text(text,encoding='utf-8')
           PY
-          # Security gate: no real Supabase host may be committed in either demo.
-          if grep -RniE 'https://[a-z0-9-]+\.supabase\.co|service_role|sb_secret_' demos; then
-            echo 'Se detecto una referencia real de Supabase. Publicacion cancelada.' >&2
+
+          # Control Colmado: reassemble the sanitized v0.6.0 interface staged in this repo.
+          cat staging/colmado/index.html.part* > demos/control-colmado/index.html
+          cat staging/colmado/app.css.part* > demos/control-colmado/app.css
+          cat staging/colmado/app.js.part* > demos/control-colmado/app.js
+
+          # Security gate: fail instead of publishing if any real Supabase endpoint/secret remains.
+          if grep -RniE 'https://[a-z0-9-]+\.supabase\.co|service_role|sb_secret_|sb_publishable_' demos; then
+            echo 'Se detecto una referencia de nube real. Publicacion cancelada.' >&2
             exit 1
           fi
-          rm -f bundle.b64
+          if grep -RniE 'qnlnzcquevlqrjtqwflr|entogrlmnzncypxybibn' demos; then
+            echo 'Se detecto un project ref real. Publicacion cancelada.' >&2
+            exit 1
+          fi
+
+          rm -rf staging bundle.b64 parts
           touch .nojekyll
 
-      - name: Commit demos
+      - name: Commit safe site
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git diff --cached --quiet || git commit -m 'Publish isolated portfolio demos'
+          git diff --cached --quiet || git commit -m 'Publish portfolio with isolated demos'
           git push
