@@ -1,39 +1,68 @@
-name: Publish portfolio bundle
+name: Build isolated portfolio demos
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  unpack:
+  build-demos:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Unpack safe portfolio
+      - name: Copy public interfaces and isolate cloud access
         shell: bash
         run: |
           set -euo pipefail
-          test -f bundle.b64
-          base64 -d bundle.b64 > /tmp/portfolio.zip
-          rm -rf /tmp/portfolio
-          mkdir -p /tmp/portfolio
-          unzip -q /tmp/portfolio.zip -d /tmp/portfolio
-          test -f /tmp/portfolio/josue-portfolio/index.html
-          rsync -a --delete --exclude='.git' --exclude='.github' /tmp/portfolio/josue-portfolio/ ./
-          rm -f bundle.b64
+          mkdir -p demos/paca-marizol demos/control-colmado
+          curl -fsSL --retry 3 --retry-delay 2 'https://paca-marizol.pages.dev/pc' -o /tmp/paca.html
+          curl -fsSL --retry 3 --retry-delay 2 'https://control-colmado.faviangomex2019.chatgpt.site/' -o /tmp/colmado.html
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
 
-      - name: Commit published files
+          def patch(src, dst, app, expected):
+              text=Path(src).read_text(encoding='utf-8',errors='replace')
+              if expected.lower() not in text.lower():
+                  raise SystemExit(f'La pagina descargada no parece ser {expected}')
+              # Remove the real Supabase browser SDK so the local demo adapter owns window.supabase.
+              text=re.sub(r'<script\b[^>]*\bsrc=["\'][^"\']*supabase[^"\']*["\'][^>]*>\s*</script>', '', text, flags=re.I)
+              # Remove any real project endpoint/key left in inline configuration.
+              text=re.sub(r"(const|let|var)\s+SUPABASE_URL\s*=\s*(['\"]).*?\2\s*;", r"\1 SUPABASE_URL='https://demo.invalid';", text, flags=re.I)
+              text=re.sub(r"(const|let|var)\s+SUPABASE_KEY\s*=\s*(['\"]).*?\2\s*;", r"\1 SUPABASE_KEY='demo-local-only';", text, flags=re.I)
+              text=re.sub(r'https://[a-z0-9-]+\.supabase\.co', 'https://demo.invalid', text, flags=re.I)
+              inject=(f"<script>window.DEMO_APP='{app}';</script>"
+                      "<script src='/demo-supabase.js'></script>"
+                      "<style>#portfolioDemoBadge{position:fixed;right:12px;bottom:12px;z-index:999999;background:#111827;color:#fff;border:1px solid #ffffff2b;border-radius:999px;padding:9px 12px;font:700 11px system-ui;box-shadow:0 8px 30px #0005}#portfolioDemoBadge button{margin-left:8px;border:0;border-radius:999px;padding:5px 8px;cursor:pointer}</style>")
+              text=re.sub(r'<head(\s[^>]*)?>', lambda m:m.group(0)+inject, text, count=1, flags=re.I)
+              badge="<div id='portfolioDemoBadge'>DEMO · DATOS FICTICIOS <button onclick='window.__DEMO_LOCAL_DB__?.reset()'>Restablecer</button></div>"
+              text=re.sub(r'<body(\s[^>]*)?>', lambda m:m.group(0)+badge, text, count=1, flags=re.I)
+              text=text.replace('Guardado en nube ✓','Demo local ✓').replace('☁ Nube ✓','Demo local ✓')
+              Path(dst).write_text(text,encoding='utf-8')
+
+          patch('/tmp/paca.html','demos/paca-marizol/index.html','paca','Paca')
+          patch('/tmp/colmado.html','demos/control-colmado/index.html','colmado','Colmado')
+          PY
+          # Security gate: no real Supabase host may be committed in either demo.
+          if grep -RniE 'https://[a-z0-9-]+\.supabase\.co|service_role|sb_secret_' demos; then
+            echo 'Se detecto una referencia real de Supabase. Publicacion cancelada.' >&2
+            exit 1
+          fi
+          rm -f bundle.b64
+          touch .nojekyll
+
+      - name: Commit demos
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git diff --cached --quiet || git commit -m "Publish portfolio and isolated demos"
+          git diff --cached --quiet || git commit -m 'Publish isolated portfolio demos'
           git push
