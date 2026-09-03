@@ -1,0 +1,39 @@
+name: Publish portfolio bundle
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Unpack safe portfolio
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f bundle.b64
+          base64 -d bundle.b64 > /tmp/portfolio.zip
+          rm -rf /tmp/portfolio
+          mkdir -p /tmp/portfolio
+          unzip -q /tmp/portfolio.zip -d /tmp/portfolio
+          test -f /tmp/portfolio/josue-portfolio/index.html
+          rsync -a --delete --exclude='.git' --exclude='.github' /tmp/portfolio/josue-portfolio/ ./
+          rm -f bundle.b64
+
+      - name: Commit published files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Publish portfolio and isolated demos"
+          git push
