@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head><script>window.DEMO_APP='colmado';</script><script src='/demo-supabase.js'></script><link rel='stylesheet' href='app.css'>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Control Colmado PC v0.6.0</title>
+
+
+</head>
+<body><div id='portfolioDemoBadge'>DEMO · DATOS FICTICIOS <button onclick='window.__DEMO_LOCAL_DB__?.reset()'>Restablecer</button></div>
+<div id="login" class="login">
+  <div class="login-card">
+    <div class="logo">▦</div>
+    <h1>Control Colmado</h1>
+    <p class="muted">PC · sincronizada con la misma cuenta y la misma base del APK.</p>
+    <div class="field"><label>Correo</label><input id="email" type="email" autocomplete="username"></div>
+    <div class="field"><label>Contraseña</label><input id="password" type="password" autocomplete="current-password"></div>
+    <button class="btn primary" style="width:100%" onclick="loginUser()">Entrar</button>
+    <p id="loginMsg" class="err small"></p>
+  </div>
+</div>
+
+<div id="app" class="app hidden">
+  <aside class="side">
+    <div class="brand"><div class="brand-icon">▦</div><div><strong>Control Colmado</strong><span>PC v0.6.0</span></div></div>
+    <div class="nav" id="nav">
+      <button data-page="inicio" class="active">⌂ Inicio</button>
+      <button data-page="ventas">🛒 Ventas</button>
+      <button data-page="productos">▣ Productos</button>
+      <button data-page="compras">⇩ Compras</button>
+      <button data-page="proveedores">◉ Proveedores</button>
+      <button data-page="fiados">▤ Fiados</button>
+      <button data-page="caja">▰ Caja</button>
+      <button data-page="reportes">▥ Reportes</button>
+      <button data-page="ajustes">⚙ Ajustes</button>
+    </div>
+    <div class="side-bottom"><button class="btn danger" onclick="logout()">Cerrar sesión</button></div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div><h2 id="title">Inicio</h2><div id="businessName" class="muted small">Control Colmado</div></div>
+      <div class="topbar-right"><span id="sync" class="sync-status"></span><button class="btn secondary" onclick="refreshAll()">↻ Sincronizar</button></div>
+    </div>
+
+    <section id="page-inicio" class="active">
+      <div class="hero">
+        <div><div class="small" style="opacity:.85">PANEL PRINCIPAL</div><h1 id="heroBusiness">Control Colmado</h1><p>Ventas, inventario, fiados y caja sincronizados con tu APK.</p></div>
+        <div class="hero-badge"><span class="small">Ventas de hoy</span><b id="heroToday">RD$0.00</b><span class="small">actualizado en tiempo real</span></div>
+      </div>
+      <div class="grid">
+        <div class="metric"><span class="label">Ventas hoy</span><b id="mSalesToday">RD$0.00</b><small id="mSalesCount">0 operaciones</small></div>
+        <div class="metric"><span class="label">Fiado pendiente</span><b id="mDebt">RD$0.00</b><small>saldo actual</small></div>
+        <div class="metric"><span class="label">Stock bajo</span><b id="mLow">0</b><small>productos por reponer</small></div>
+        <div class="metric"><span class="label">Caja</span><b id="mCash">Cerrada</b><small id="mCashSub">abre caja para iniciar</small></div>
+      </div>
+      <div class="notice" style="margin-top:16px"><b>Inventario por conversiones:</b> arroz puede comprarse por saco y venderse por libra; huevos por cartón y unidad; refrescos por fardo y unidad.</div>
+    </section>
+
+    <section id="page-ventas">
+      <div class="two">
+        <div class="card">
+          <div class="section-title"><h3>Productos</h3><span class="pill">Venta rápida</span></div>
+          <div class="field"><label>Buscar / lector de código</label><input id="saleSearch" placeholder="Nombre, atajo o código" oninput="renderSaleProducts()" onkeydown="saleScanEnter(event)"></div><div class="sale-viewbar"><span class="muted small">Productos disponibles</span><div class="segmented"><button id="saleViewList" onclick="setSaleLayout('list')">☷ Lista</button><button id="saleViewGrid" onclick="setSaleLayout('grid')">▦ Cuadrícula</button><button id="saleViewAuto" onclick="setSaleLayout('auto')">Auto</button></div></div>
+          <div id="saleProducts"></div>
+        </div>
+        <div class="card">
+          <div class="section-title"><h3 id="saleCartTitle">Venta actual</h3><button class="btn ghost" onclick="clearSale()">Limpiar</button></div>
+          <div id="cart"></div>
+          <div class="total" id="cartTotal">RD$0.00</div>
+          <button class="btn primary" style="width:100%" onclick="openCheckout()">Cobrar / Guardar</button>
+          <p id="saleMsg" class="small"></p>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="section-title"><h3>Historial de ventas</h3><span class="muted small">Puedes editar o anular ventas completadas</span></div>
+        <div id="salesHistory"></div>
+      </div>
+    </section>
+
+    <section id="page-productos">
+      <div class="two">
+        <div class="card">
+          <h3>Registrar producto</h3>
+          <div class="modal-grid">
+            <div class="field"><label>Nombre</label><input id="pName"></div>
+            <div class="field"><label>Atajo</label><input id="pShortcut" placeholder="ARROZ"></div>
+            <div class="field"><label>Código de barras</label><input id="pBarcode"></div>
+            <div class="field"><label>Unidad base</label><select id="pBaseUnit"><option value="unidad">Unidad</option><option value="libra">Libra</option><option value="onza">Onza</option><option value="kg">Kilogramo</option><option value="gramo">Gramo</option><option value="litro">Litro</option><option value="paquete">Paquete</option><option value="otro">Otro</option></select></div>
+            <div class="field"><label>Precio venta por unidad base</label><input id="pSalePrice" type="number" step="0.01"></div>
+            <div class="field"><label>Stock inicial</label><input id="pStock" type="number" step="0.001" value="0"></div>
+            <div class="field"><label>Stock mínimo</label><input id="pMin" type="number" step="0.001" value="0"></div>
+            <div class="field"><label>Costo base (si no hay presentación)</label><input id="pBaseCost" type="number" step="0.01" value="0"></div>
+          </div>
+          <div class="subtle" style="margin:12px 0">Presentación de compra opcional: Saco 50 lb, Cartón 30 unidades, Fardo 12 unidades...</div>
+          <div class="modal-grid">
+            <div class="field"><label>Presentación de compra</label><input id="pPurchaseName" placeholder="Saco / Cartón / Fardo"></div>
+            <div class="field"><label>Factor a unidad base</label><input id="pFactor" type="number" step="0.001" placeholder="50"></div>
+            <div class="field"><label>Costo por presentación</label><input id="pPurchaseCost" type="number" step="0.01"></div>
+          </div>
+          <button class="btn primary" onclick="createProduct()">Guardar producto</button>
+          <p id="productMsg" class="small"></p>
+        </div>
+        <div class="card">
+          <div class="section-title"><h3>Inventario</h3><div class="field" style="margin:0;width:240px"><input id="productSearch" placeholder="Buscar" oninput="renderProducts()"></div></div>
+          <div id="productTable"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="page-compras">
+      <div class="two">
+        <div class="card">
+          <h3>Agregar mercancía</h3>
+          <div class="field"><label>Proveedor</label><select id="buySupplier"></select></div>
+          <div class="field"><label>Producto</label><select id="buyProduct" onchange="updateBuyUnits()"></select></div>
+          <div class="field"><label>Presentación recibida</label><select id="buyUnit" onchange="updateBuyCost()"></select></div>
+          <div class="modal-grid">
+            <div class="field"><label>Cantidad</label><input id="buyQty" type="number" step="0.001" value="1"></div>
+            <div class="field"><label>Costo por presentación</label><input id="buyCos
