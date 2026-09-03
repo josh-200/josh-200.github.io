@@ -1,0 +1,89 @@
+t" type="number" step="0.01"></div>
+          </div>
+          <div id="buyConversion" class="subtle"></div>
+          <button class="btn secondary" style="margin-top:10px" onclick="addPurchaseLine()">Agregar a compra</button>
+        </div>
+        <div class="card">
+          <h3>Compra actual</h3>
+          <div id="purchaseCart"></div><div class="total" id="purchaseTotal">RD$0.00</div>
+          <div class="field"><label>Factura / referencia</label><input id="buyInvoice"></div>
+          <div class="field"><label>Monto pagado ahora</label><input id="buyPaid" type="number" step="0.01" placeholder="Déjalo vacío para pagar todo"></div>
+          <div class="field"><label>Nota</label><input id="buyNotes"></div>
+          <button class="btn primary" style="width:100%" onclick="registerPurchase()">Registrar compra</button>
+          <p id="purchaseMsg" class="small"></p>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px"><div class="section-title"><h3>Compras recientes</h3><span class="muted small">Incluye pendientes a proveedores</span></div><div id="purchaseHistory"></div></div>
+    </section>
+
+    <section id="page-proveedores">
+      <div class="two">
+        <div class="card">
+          <h3>Nuevo proveedor</h3>
+          <div class="field"><label>Nombre</label><input id="sName"></div><div class="field"><label>Teléfono</label><input id="sPhone"></div><div class="field"><label>Dirección</label><input id="sAddress"></div><div class="field"><label>Nota</label><textarea id="sNotes" rows="2"></textarea></div>
+          <button class="btn primary" onclick="createSupplier()">Guardar proveedor</button><p id="supplierMsg" class="small"></p>
+        </div>
+        <div class="card"><div class="section-title"><h3>Proveedores</h3><span id="supplierDebt" class="pill amber">RD$0.00 pendiente</span></div><div id="supplierTable"></div></div>
+      </div>
+    </section>
+
+    <section id="page-fiados">
+      <div class="two">
+        <div class="card">
+          <h3>Nuevo cliente</h3>
+          <div class="field"><label>Nombre</label><input id="cName"></div><div class="field"><label>Teléfono</label><input id="cPhone"></div><div class="field"><label>Dirección</label><input id="cAddress"></div><div class="field"><label>Límite de crédito (0 = sin límite definido)</label><input id="cLimit" type="number" step="0.01" value="0"></div>
+          <button class="btn primary" onclick="createCustomer()">Guardar cliente</button><p id="customerMsg" class="small"></p>
+        </div>
+        <div class="card"><div class="section-title"><h3>Clientes y saldos</h3><span id="creditTotal" class="pill amber">RD$0.00</span></div><div id="creditTable"></div></div>
+      </div>
+    </section>
+
+    <section id="page-caja">
+      <div class="grid" style="margin-bottom:14px">
+        <div class="metric"><span class="label">Estado</span><b id="cashState">Cerrada</b><small id="cashOpenedAt">—</small></div>
+        <div class="metric"><span class="label">Estimado</span><b id="cashEstimated">RD$0.00</b><small>según movimientos</small></div>
+        <div class="metric"><span class="label">Entradas</span><b id="cashIn">RD$0.00</b><small>desde apertura</small></div>
+        <div class="metric"><span class="label">Salidas</span><b id="cashOut">RD$0.00</b><small>desde apertura</small></div>
+      </div>
+      <div class="two">
+        <div class="card"><h3>Acciones de caja</h3><div class="toolbar"><button class="btn primary" id="cashOpenClose" onclick="cashOpenClose()">Abrir caja</button><button class="btn secondary" onclick="cashMovement('entrada')">Registrar ingreso</button><button class="btn amber" onclick="cashMovement('salida')">Registrar gasto</button></div><p id="cashMsg" class="small"></p></div>
+        <div class="card"><h3>Movimientos recientes</h3><div id="cashMovements"></div></div>
+      </div>
+    </section>
+
+    <section id="page-reportes">
+      <div class="section-title"><div><h3>Reportes</h3><div class="muted small">Resumen financiero e inventario</div></div></div>
+      <div class="range" id="reportRange"><button data-range="today" class="active">Hoy</button><button data-range="7">7 días</button><button data-range="30">30 días</button><button data-range="all">Todo</button></div>
+      <div class="grid">
+        <div class="metric"><span class="label">Ventas</span><b id="rSales">RD$0.00</b><small id="rSalesCount">0 ventas</small></div>
+        <div class="metric"><span class="label">Ganancia bruta</span><b id="rProfit">RD$0.00</b><small>ventas - costo vendido</small></div>
+        <div class="metric"><span class="label">Costo vendido</span><b id="rCost">RD$0.00</b><small>costo de mercancía</small></div>
+        <div class="metric"><span class="label">Compras</span><b id="rPurchases">RD$0.00</b><small>mercancía recibida</small></div>
+        <div class="metric"><span class="label">Fiado pendiente</span><b id="rDebt">RD$0.00</b><small>saldo actual</small></div>
+        <div class="metric"><span class="label">A proveedores</span><b id="rSupplierDebt">RD$0.00</b><small>compras pendientes</small></div>
+        <div class="metric"><span class="label">Stock bajo</span><b id="rLow">0</b><small>productos en alerta</small></div>
+        <div class="metric"><span class="label">Productos</span><b id="rProducts">0</b><small>activos</small></div>
+      </div>
+    </section>
+
+    <section id="page-ajustes">
+      <div class="section-title"><div><h3>Ajustes</h3><div class="muted small">Configuración del negocio y de este equipo</div></div><span class="pill">PC v0.6.0</span></div>
+      <div class="settings-shell">
+        <div class="settings-menu" id="settingsMenu">
+          <button class="active" data-setting="negocio" onclick="settingsTab('negocio')">🏪 Negocio</button>
+          <button data-setting="ventas" onclick="settingsTab('ventas')">🛒 Ventas y cobro</button>
+          <button data-setting="inventario" onclick="settingsTab('inventario')">📦 Inventario</button>
+          <button data-setting="compras" onclick="settingsTab('compras')">🚚 Compras y proveedores</button>
+          <button data-setting="fiados" onclick="settingsTab('fiados')">🧾 Clientes y fiados</button>
+          <button data-setting="caja" onclick="settingsTab('caja')">💵 Caja</button>
+          <button data-setting="recibos" onclick="settingsTab('recibos')">🧾 Recibos</button>
+          <button data-setting="scanner" onclick="settingsTab('scanner')">📷 Escáner</button>
+          <button data-setting="apariencia" onclick="settingsTab('apariencia')">🎨 Apariencia</button>
+          <button data-setting="datos" onclick="settingsTab('datos')">☁ Datos y respaldo</button>
+          <button data-setting="cuenta" onclick="settingsTab('cuenta')">🔐 Cuenta</button>
+          <button class="danger-tab" data-setting="peligro" onclick="settingsTab('peligro')">⚠ Zona peligrosa</button>
+          <button data-setting="acerca" onclick="settingsTab('acerca')">ⓘ Acerca de</button>
+        </div>
+        <div class="settings-stack">
+          <div class="settings-pane active" data-pane="negocio"><div class="card"><h3>Información del negocio</h3><div class="field"><label>Nombre</label><input id="setBusiness"></div><button class="btn primary" onclick="saveBusiness()">Guardar nombre</button><p id="businessMsg" class="small"></p></div></div>
+          <div class="settings-pane" data-pane="ventas"><div class="card"><h3>Ventas y cobro</h3><div class="field"><label>Método de pago predeterminado</label><select id="setDefaultPayment"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option></select></div><div class="settings-row"><div><b>Modo venta rápida</b><div class="setting-note">Reduce pasos para productos por unidad.</div></div><input id="setQuickSale" type="checkbox"></div><div class="settings-row"><div><b>Exigir caja abierta para efectivo</b><div class="setting-note">Bloquea cobros en efectivo si la caja está cerrada.</div></div><input id="setRequireC
